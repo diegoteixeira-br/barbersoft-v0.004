@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const RECAPTCHA_SITE_KEY = "6Le2q2EsAAAAALT1XXCEYyPsT3gfauLb_0JgYXs7";
-const GOOGLE_CLOUD_PROJECT_ID = "barbersoft";
+const GOOGLE_CLOUD_PROJECT_ID = "n8n-drive-476323";
 
 interface RecaptchaRequest {
   token: string;
