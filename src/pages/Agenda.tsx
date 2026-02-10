@@ -60,6 +60,14 @@ export default function Agenda() {
     });
   };
 
+  const handleToggleBusinessHours = () => {
+    setShowBusinessHoursOnly(prev => {
+      const newValue = !prev;
+      localStorage.setItem("agenda-business-hours-only", String(newValue));
+      return newValue;
+    });
+  };
+
   // Calculate date range based on view
   const dateRange = useMemo(() => {
     switch (view) {
