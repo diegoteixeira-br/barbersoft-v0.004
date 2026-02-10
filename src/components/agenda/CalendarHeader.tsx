@@ -170,7 +170,7 @@ export function CalendarHeader({
               {showBusinessHoursOnly ? "Mostrar todos os horários (7h-23h)" : "Somente horário comercial"}
             </TooltipContent>
           </Tooltip>
-        )
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>
