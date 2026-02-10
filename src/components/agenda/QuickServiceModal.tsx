@@ -501,7 +501,7 @@ export function QuickServiceModal({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || (isSplit && !scheduleLater && !splitValid)}>
                 {isLoading ? "Salvando..." : scheduleLater ? "Agendar Serviço" : "Lançar Atendimento"}
               </Button>
             </div>
