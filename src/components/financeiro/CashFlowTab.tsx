@@ -80,7 +80,7 @@ export function CashFlowTab() {
     }
   }, [periodFilter, todayAppointments, weekAppointments, monthAppointments, customAppointments]);
 
-  // Calculate payment method breakdown for filtered period
+  // Calculate payment method breakdown for filtered period (supports split payments)
   const paymentBreakdown = useMemo(() => {
     const breakdown = {
       cash: { total: 0, count: 0 },
@@ -91,11 +91,14 @@ export function CashFlowTab() {
     };
 
     filteredAppointments.forEach((apt) => {
-      const method = apt.payment_method as keyof typeof breakdown;
-      if (method && breakdown[method]) {
-        breakdown[method].total += apt.total_price;
-        breakdown[method].count += 1;
-      }
+      const distribution = getPaymentDistribution(apt.payment_method, apt.total_price);
+      distribution.forEach(({ method, amount }) => {
+        const key = method as keyof typeof breakdown;
+        if (breakdown[key]) {
+          breakdown[key].total += amount;
+          breakdown[key].count += 1;
+        }
+      });
     });
 
     return breakdown;
