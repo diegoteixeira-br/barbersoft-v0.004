@@ -1,6 +1,7 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { KPICard } from "@/components/admin/KPICard";
 import { ConversionChart } from "@/components/admin/ConversionChart";
+import { ReferralRankingCard } from "@/components/admin/ReferralRankingCard";
 import { useAdminStats } from "@/hooks/useAdminStats";
 import { Building2, DollarSign, UserPlus, CreditCard } from "lucide-react";
 
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
             </div>
 
             <ConversionChart data={stats?.visitsByDay || []} />
+            <ReferralRankingCard />
           </>
         )}
       </div>
