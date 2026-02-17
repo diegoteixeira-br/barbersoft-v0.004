@@ -1,42 +1,47 @@
 
 
-## Plano: Ativar/Desativar Agente WhatsApp na aba Automacoes
+# Proxy PHP para Preview de Compartilhamento do Blog
 
-### O que sera feito
-Adicionar um novo card na aba **Automacoes** (Marketing) com um toggle para ativar/desativar o agente de atendimento automatico do WhatsApp (ComunicaZap/Jackson). O card seguira o mesmo visual dos demais (Aniversario, Resgate, Lembrete).
+## Problema
+O servidor da Hostinger (plano compartilhado) bloqueia o `mod_proxy`, então a flag `[P]` no `.htaccess` nao funciona. O fallback `302` nao permite que os robos do WhatsApp/Facebook leiam as tags OG, quebrando o preview rico.
 
-### Etapas
+## Solucao
+Criar um arquivo PHP que atua como proxy local, buscando o HTML da Edge Function e entregando com status 200 no dominio `barbersoft.com.br`.
 
-**1. Migracao de banco de dados**
-- Adicionar coluna `whatsapp_agent_enabled` (boolean, default `false`) na tabela `business_settings`.
+## Alteracoes
 
-**2. Atualizar hook `useMarketingSettings.ts`**
-- Incluir `whatsapp_agent_enabled` na interface `MarketingSettings`.
-- Adicionar o campo no `select` da query e no `update` da mutation.
+### 1. Criar `public/share.php`
+- Recebe o parametro `slug` via `$_GET`
+- Faz requisicao HTTP para a Edge Function `blog-share` no Supabase
+- Retorna o HTML completo (com tags OG) com status 200
+- Inclui tratamento de erro com redirect para `/blog` caso falhe
 
-**3. Atualizar componente `AutomationsTab.tsx`**
-- Adicionar novo card "Agente WhatsApp" com icone `MessageSquare` (ou `Bot`), titulo, descricao e um `Switch` para ativar/desativar.
-- O estado local `whatsappAgentEnabled` sera sincronizado com os settings e salvo junto ao botao "Salvar Configuracoes".
+### 2. Atualizar `public/.htaccess`
+- Remover as regras antigas de proxy (`[P]`) e redirect 302
+- Adicionar regra simples de rewrite interno: `/share/blog/{slug}` aponta para `share.php?slug={slug}` com flags `[L,QSA]`
 
-**4. Atualizar `types.ts`**
-- O tipo gerado sera atualizado automaticamente pela migracao.
+### 3. Manter `src/pages/institucional/BlogPost.tsx`
+- Sem alteracoes - ja usa a URL `barbersoft.com.br/share/blog/{slug}`
 
----
+## Fluxo
 
-### Detalhes Tecnicos
-
-**Migracao SQL:**
-```sql
-ALTER TABLE business_settings
-  ADD COLUMN whatsapp_agent_enabled BOOLEAN DEFAULT false;
+```text
+WhatsApp/Usuario acessa: barbersoft.com.br/share/blog/{slug}
+        |
+   .htaccess reescreve internamente para share.php?slug={slug}
+        |
+   share.php faz requisicao HTTP para Edge Function blog-share
+        |
+   Edge Function retorna HTML com tags OG
+        |
+   share.php retorna esse HTML com status 200
+        |
+   Robo le as tags OG / Usuario e redirecionado via meta refresh
 ```
 
-**Card no AutomationsTab** (posicionado apos o card de Lembrete de Agendamento):
-- Icone: `Bot` (lucide-react) com fundo roxo
-- Titulo: "Agente WhatsApp"
-- Descricao: "Ativa ou desativa o atendimento automatico via WhatsApp (Jackson)"
-- Toggle Switch para ligar/desligar
-- Texto informativo explicando que o agente responde automaticamente os clientes
+## Detalhes Tecnicos
 
-**Hook:** O campo `whatsapp_agent_enabled` sera incluido no select e enviado no save, seguindo o mesmo padrao dos demais campos.
+**share.php** usara `file_get_contents` com fallback para `cURL` caso o primeiro falhe (compatibilidade com diferentes configuracoes da Hostinger).
+
+**URL da Edge Function**: `https://lgrugpsyewvinlkgmeve.supabase.co/functions/v1/blog-share?slug={slug}`
 
