@@ -33,6 +33,7 @@ export default function Auth() {
   const { toast } = useToast();
   const { recaptchaRef, getToken, resetRecaptcha } = useRecaptchaV2();
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [view, setView] = useState<AuthView>("auth");
@@ -108,8 +109,21 @@ export default function Auth() {
   };
 
   const verifyRecaptcha = (): boolean => {
-    // reCAPTCHA is optional - if widget failed to load (domain error), allow proceeding
+    // If reCAPTCHA widget loaded successfully, require the token
+    if (recaptchaLoaded) {
+      const token = getToken();
+      if (!token) {
+        toast({ title: "Verificação necessária", description: "Por favor, marque a caixa 'Não sou um robô'.", variant: "destructive" });
+        return false;
+      }
+    }
+    // If widget failed to load (domain error in dev/preview), allow proceeding
     return true;
+  };
+
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+    if (!recaptchaLoaded && token) setRecaptchaLoaded(true);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -290,7 +304,7 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={setRecaptchaToken} />
+                <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={handleRecaptchaChange} onLoad={() => setRecaptchaLoaded(true)} />
 
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
                   {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</>) : "Enviar Link de Recuperação"}
@@ -353,7 +367,7 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={setRecaptchaToken} />
+                  <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={handleRecaptchaChange} onLoad={() => setRecaptchaLoaded(true)} />
 
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
                     {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</>) : "Entrar"}
@@ -420,7 +434,7 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={setRecaptchaToken} />
+                  <RecaptchaWidget recaptchaRef={recaptchaRef} onChange={handleRecaptchaChange} onLoad={() => setRecaptchaLoaded(true)} />
 
                   <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
                     {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando conta...</>) : "Criar Conta"}
