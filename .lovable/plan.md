@@ -1,35 +1,43 @@
 
 
-# Remover Empresa Duplicada e Prevenir Duplicatas Futuras
+## Corrigir o botao "Cancelar Conexao" do WhatsApp
 
-## Problema
-O usuario `dtsilva84@hotmail.com` possui 2 registros na tabela `companies` com o mesmo `owner_user_id`. A empresa mais antiga (09/02) e a correta, e a mais nova (16/02) e a duplicada.
+### Problema identificado
 
-## Dados encontrados
+Quando o usuario clica em "Cancelar Conexao" durante o processo de conexao (QR Code visivel), acontece o seguinte ciclo:
+
+1. O `disconnect()` e chamado, que define o estado como `"disconnected"`
+2. A interface continua mostrando a area de conexao porque a condicao de renderizacao inclui o estado `"disconnected"` (linha 187 do componente)
+3. O efeito `autoConnect` detecta que o estado voltou para `"disconnected"` e cria uma nova instancia automaticamente
+4. Resultado: o modal nunca fecha e fica em loop
+
+### Solucao
+
+Duas alteracoes serao feitas:
+
+**1. `UnitWhatsAppIntegration.tsx` - Usar `cleanup()` e fechar o modal ao cancelar**
+
+- Criar uma nova funcao `handleCancelConnection` que:
+  - Chama `cleanup()` (que deleta a instancia da Evolution API) em vez de `disconnect()` (que e para instancias ja conectadas)
+  - Notifica o componente pai para fechar o modal via um novo callback `onClose`
+- Substituir todas as chamadas de `handleDisconnect` nos botoes "Cancelar Conexao" por `handleCancelConnection`
+- Adicionar `onClose` como prop opcional do componente
+
+**2. `UnitWhatsAppModal.tsx` - Passar callback de fechamento**
+
+- Passar a funcao `onClose` do modal como prop para `UnitWhatsAppIntegration`, permitindo que o componente feche o modal apos o cancelamento
+
+### Detalhes tecnicos
 
 ```text
-ID: 507b3741... | Criada: 09/02/2026 | Status: trial (0 dias) -- MANTER
-ID: f50d4ea9... | Criada: 16/02/2026 | Status: trial (5 dias) -- EXCLUIR
+Fluxo atual (com bug):
+  Cancelar -> disconnect() -> state="disconnected" -> UI mostra loading -> autoConnect recria instancia
+
+Fluxo corrigido:
+  Cancelar -> cleanup() -> state="disconnected" -> onClose() fecha o modal -> autoConnect nao dispara (modal fechado)
 ```
 
-## Alteracoes
+Arquivos a modificar:
+- `src/components/units/UnitWhatsAppIntegration.tsx` - Adicionar prop `onClose`, criar `handleCancelConnection`
+- `src/components/units/UnitWhatsAppModal.tsx` - Passar `onClose` para o componente filho
 
-### 1. Excluir a empresa duplicada
-- Usar a edge function `delete-company` existente para excluir a empresa `f50d4ea9-474a-48cd-9d6d-f1c374abd44a` (a duplicada de 16/02)
-- Isso vai limpar todos os dados associados (unidades, barbeiros, servicos, etc.)
-
-### 2. Adicionar constraint unica no banco de dados
-- Criar uma migration que adiciona um indice unico na coluna `owner_user_id` da tabela `companies`
-- Isso impede que o mesmo usuario crie mais de uma empresa
-- Usa `CREATE UNIQUE INDEX` para garantir a restricao no nivel do banco
-
-```text
-ALTER TABLE companies ADD CONSTRAINT unique_owner_user_id UNIQUE (owner_user_id);
-```
-
-### 3. Verificar o fluxo de cadastro (opcional)
-- Revisar o codigo de criacao de empresa para garantir que faz um check antes de criar, como fallback adicional
-
-## Impacto
-- A empresa duplicada sera removida permanentemente
-- Novas tentativas de criar uma segunda empresa pelo mesmo usuario serao bloqueadas pelo banco de dados
